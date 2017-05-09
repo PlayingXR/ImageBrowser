@@ -155,12 +155,10 @@ static NSString* cellIdentifier = @"CellIdentifier";
             if (image) {
                 cell.imageView.image = image;
             } else {
-                cell.userInteractionEnabled = NO;
                 [cell.imageView sd_setImageWithURL:imagePath
                                   placeholderImage:self.placeholderImage
                                          completed:^(UIImage *image, NSError *error, SDImageCacheType cacheType, NSURL *imageURL) {
                                              [cell resetState];
-                                             cell.userInteractionEnabled = YES;
                                          }];
             }
         }
