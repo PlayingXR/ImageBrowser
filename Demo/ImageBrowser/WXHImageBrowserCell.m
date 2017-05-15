@@ -110,9 +110,7 @@
     if (panGesture.state == UIGestureRecognizerStateEnded ||
         panGesture.state == UIGestureRecognizerStateCancelled) {
         if (self.isPanGesture) {
-            
-            
-            
+            //如果下拉的缩放大小小于了消失的倍数，且继续下拉，就做消失
             if (self.panScale < self.willDismissScale && self.isWillDismiss) {
                 [self dismissWithAnimation:YES];
             } else {
@@ -131,7 +129,7 @@
         self.isPanGesture = NO;
         self.panScale = self.currentScale;
         
-        CGPoint point = [panGesture velocityInView:panGesture.view];
+        CGPoint point = [panGesture velocityInView:panGesture.view];//在pan手势响应开始时，利用下拉的速度来判断是否是下拉
         if ((panGesture.numberOfTouches < 2) && (point.y > 0) && (self.scrollView.contentOffset.y <= 2)) {
             
             self.imageBrowser.collectionView.scrollEnabled = NO;
@@ -150,6 +148,7 @@
             
             CGPoint point = [panGesture velocityInView:panGesture.view];
 
+            //细节：是否继续下拉
             if (point.y > 0) {
                 self.isWillDismiss = YES;
             } else {
@@ -169,7 +168,9 @@
             center.y -= self.scrollView.contentOffset.y;
             
             CGSize size = [self imageSizeForScale:zoomScale];
+            //缩小
             self.imageView.frame = CGRectMake(0, 0, size.width, size.height);
+            //平移
             self.imageView.center = center;
             
             if (self.delegate && [self.delegate respondsToSelector:@selector(browserCell:zoomScale:)])
@@ -181,6 +182,7 @@
         }
     }
 }
+
 
 - (void)doubleTapGestureAction:(UITapGestureRecognizer *)tapGesture
 {
@@ -195,6 +197,8 @@
     
     if (self.currentScale != zoomScale) {
         _currentScale = zoomScale;
+        
+        //获取图片缩放后的frame
         CGRect rect = [self zoomImageForScale:zoomScale point:point centering:YES];
         rect = [self adjustImageFrame:rect];
         [UIView animateWithDuration:animationDuration
@@ -213,6 +217,8 @@
 
     if (pinchGesture.state == UIGestureRecognizerStateEnded ||
         pinchGesture.state == UIGestureRecognizerStateCancelled) {
+        
+        //如果大于图片的最小倍数，就仅仅调整图片的位置
         if (self.currentScale > self.minZoomScale) {
             
             CGRect rect = [self adjustImageFrame:self.imageView.frame];
@@ -223,8 +229,10 @@
                                  [self adjustScrollFrame];
                              }];
         } else if (self.currentScale < self.willDismissScale && self.isWillDismiss) {
+            //如果小于了图片的最小倍数，且小于了消失的倍数，并且还继续缩小，就把图片缩小并消失
             [self dismissWithAnimation:YES];
         } else {
+            //如果小于了图片的最小倍数，且大于了消失的倍数或者不还继续缩小，就把图片恢复到最小倍数
             [self dismissWithAnimation:NO];
             [UIView animateWithDuration:animationDuration animations:^{
                 [self resetState];
@@ -242,6 +250,7 @@
             zoomScale = zoomScale > self.maxZoomScale ? self.maxZoomScale : zoomScale;
             zoomScale = zoomScale < self.dismissZoomScale ? self.dismissZoomScale : zoomScale;
             
+            //细节：是否有继续缩小的趋势
             if (zoomScale <= self.currentScale) {
                 self.isWillDismiss = YES;
             } else {
@@ -285,7 +294,8 @@
     }
 }
 
-#pragma mark - 工具
+#pragma mark - 辅助函数
+//图片缩放后的size
 - (CGSize)imageSizeForScale:(CGFloat)scale
 {
     UIImage *image = _imageView.image;
@@ -293,8 +303,14 @@
     CGFloat height = width * image.size.height/image.size.width;
     return CGSizeMake(width * scale, height * scale);
 }
+/**
+ 图片缩放
 
-//放大、是否居中
+ @param scale 倍数
+ @param point 点击的位置
+ @param isCenter 是否对焦
+ @return 缩放过后的frame
+ */
 - (CGRect)zoomImageForScale:(CGFloat)scale
                       point:(CGPoint)point
                   centering:(BOOL)isCenter;
@@ -352,7 +368,8 @@
     [self.scrollView scrollRectToVisible:rect animated:NO];
 }
 
-//当图片的frame小于屏幕大小的时候需要居中处理
+//当图片的frame小于屏幕大小的时候，做居中处理
+//当图片的frame大于屏幕大小的时候，图片滑动不能超过屏幕的边边
 - (CGRect)adjustImageFrame:(CGRect)rect
 {
     CGFloat image_offset_x, image_offset_y;
@@ -361,6 +378,7 @@
     scroll_offset_y = self.scrollView.contentOffset.y;
     CGRect scrollFrame = self.scrollView.frame;
     
+    //当图片的宽大于屏幕大小的时候，图片滑动不能超过屏幕的边边
     if (rect.size.width > scrollFrame.size.width) {
         image_offset_x = rect.origin.x;
         if (rect.origin.x > scroll_offset_x) {
@@ -369,10 +387,12 @@
             image_offset_x = (scroll_offset_x + scrollFrame.size.width) - rect.size.width;
         }
     } else {
+        //当图片的宽小于屏幕大小的时候，做居中处理
         image_offset_x = scroll_offset_x + (scrollFrame.size.width - rect.size.width) / 2.0;
         image_offset_x = image_offset_x < 0 ? 0 : image_offset_x;
     }
     
+    //当图片的高大于屏幕大小的时候，图片滑动不能超过屏幕的边边
     if (rect.size.height > scrollFrame.size.height) {
         image_offset_y = rect.origin.y;
         if (rect.origin.y > scroll_offset_y) {
@@ -381,6 +401,7 @@
             image_offset_y = (scroll_offset_y + scrollFrame.size.height) - rect.size.height;
         }
     } else {
+        //当图片的高小于屏幕大小的时候，做居中处理
         image_offset_y = scroll_offset_y + (scrollFrame.size.height - rect.size.height) / 2.0;
         image_offset_y = image_offset_y < 0 ? 0 : image_offset_y;
     }
@@ -395,8 +416,12 @@
         _scrollView = [[UIScrollView alloc] init];
         _scrollView.showsHorizontalScrollIndicator = NO;
         _scrollView.showsVerticalScrollIndicator = NO;
+        
+        //开启弹性，不然图片小于屏幕了无法响应pan手势
         _scrollView.alwaysBounceVertical = YES;
         _scrollView.alwaysBounceHorizontal = YES;
+        
+        //设置scrollView的缩放倍数，不然不响应pinch手势
         _scrollView.maximumZoomScale = self.maxZoomScale;
         _scrollView.minimumZoomScale = 0.1f;
         _scrollView.decelerationRate = 0.1f;
